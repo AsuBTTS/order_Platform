@@ -15,20 +15,28 @@ class CartItem(models.Model):
         on_delete=models.CASCADE,
         related_name="cart_items",
     )
+    customization = models.JSONField(default=dict, blank=True)
+    customization_key = models.CharField(max_length=120, blank=True)
+    customization_label = models.CharField(max_length=255, blank=True)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    customization_price_delta = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     quantity = models.PositiveIntegerField(default=1)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=("user", "dish"),
-                name="unique_cart_item_per_user_dish",
+                fields=("user", "dish", "customization_key"),
+                name="unique_cart_item_per_user_dish_customization",
             )
         ]
 
     def save(self, *args, **kwargs):
-        self.subtotal = self.dish.price * self.quantity
+        if self.dish_id and self.unit_price <= 0:
+            self.unit_price = self.dish.price + self.customization_price_delta
+        self.subtotal = self.unit_price * self.quantity
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.user.username} - {self.dish.name} x {self.quantity}"
+        suffix = f" ({self.customization_label})" if self.customization_label else ""
+        return f"{self.user.username} - {self.dish.name}{suffix} x {self.quantity}"

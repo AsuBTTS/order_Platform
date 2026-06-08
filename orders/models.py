@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 
 from dishes.models import Dish
+from users.models import Coupon
 
 
 class Order(models.Model):
@@ -42,6 +43,15 @@ class Order(models.Model):
         choices=DeliveryType.choices,
     )
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    subtotal_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    coupon = models.ForeignKey(
+        Coupon,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="orders",
+    )
     status = models.CharField(
         max_length=30,
         choices=Status.choices,
@@ -69,6 +79,8 @@ class OrderItem(models.Model):
     )
     dish_name = models.CharField(max_length=100)
     dish_price = models.DecimalField(max_digits=10, decimal_places=2)
+    customization = models.JSONField(default=dict, blank=True)
+    customization_label = models.CharField(max_length=255, blank=True)
     quantity = models.PositiveIntegerField(default=1)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
@@ -81,4 +93,5 @@ class OrderItem(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.order.order_no} - {self.dish_name} x {self.quantity}"
+        suffix = f" ({self.customization_label})" if self.customization_label else ""
+        return f"{self.order.order_no} - {self.dish_name}{suffix} x {self.quantity}"
